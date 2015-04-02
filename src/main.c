@@ -3,6 +3,8 @@
 #include "ss.h"
 
 int main(void) {
-    printf("Hello World\n");
+    ss_ctx *ctx = ss_new();
+    ss_log(ctx, SS_LOG_INFO, "Hello %s\n", "World");
+    ss_free(ctx);
     return 0;
 }
