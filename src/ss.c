@@ -24,6 +24,11 @@ void ss_free(ss_ctx *ctx) {
     free(ctx);
 }
 
+bool ss_run(ss_ctx *ctx) {
+    ctx->cbk(ctx, 0, ctx->cbk_arg);
+    return true;
+}
+
 void ss_log(ss_ctx *ctx, int level, const char *format, ...) {
     if (level <= ctx->logger.level) {
         va_list args;

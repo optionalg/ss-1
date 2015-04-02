@@ -1,6 +1,7 @@
 #ifndef __SS_H__
 #define __SS_H__
 
+#include <stdbool.h>
 #include <pthread.h>
 
 #define SS_LOG_FATAL 0
@@ -31,6 +32,7 @@ typedef struct __ss_ctx {
 
 ss_ctx *ss_new(ss_cbk cbk, void *cbk_arg);
 void ss_free(ss_ctx *ctx);
+bool ss_run(ss_ctx *ctx);
 void ss_log(ss_ctx *ctx, int level, const char *format, ...);
 
 #endif
