@@ -1,6 +1,8 @@
 #ifndef __SS_H__
 #define __SS_H__
 
+#include <pthread.h>
+
 #define SS_LOG_FATAL 0
 #define SS_LOG_ERROR 1
 #define SS_LOG_WARN  2
@@ -14,6 +16,7 @@
 typedef struct __ss_logger {
     int level;
     int fd;
+    pthread_mutex_t mutex;
 } ss_logger;
 
 typedef struct __ss_ctx {
