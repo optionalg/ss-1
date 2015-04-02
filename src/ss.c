@@ -4,11 +4,14 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-ss_ctx *ss_new(void) {
+ss_ctx *ss_new(ss_cbk cbk, void *cbk_arg) {
     ss_ctx *ctx = malloc(sizeof(ss_ctx));
     if (!ctx) {
         return NULL;
     }
+
+    ctx->cbk = cbk;
+    ctx->cbk_arg = cbk_arg;
 
     ctx->logger.level = SS_DEFAULT_LOG_LEVEL;
     ctx->logger.fd = SS_DEFAULT_LOG_FD;

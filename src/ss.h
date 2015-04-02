@@ -19,11 +19,17 @@ typedef struct __ss_logger {
     pthread_mutex_t mutex;
 } ss_logger;
 
+struct __ss_ctx;
+
+typedef void (*ss_cbk)(struct __ss_ctx *ctx, int socket, void *arg);
+
 typedef struct __ss_ctx {
+    ss_cbk cbk;
+    void *cbk_arg;
     ss_logger logger;
 } ss_ctx;
 
-ss_ctx *ss_new(void);
+ss_ctx *ss_new(ss_cbk cbk, void *cbk_arg);
 void ss_free(ss_ctx *ctx);
 void ss_log(ss_ctx *ctx, int level, const char *format, ...);
 
