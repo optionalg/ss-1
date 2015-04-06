@@ -32,7 +32,9 @@ typedef struct __ss_ctx {
 
 ss_ctx *ss_new(ss_cbk cbk, void *cbk_arg);
 void ss_free(ss_ctx *ctx);
-bool ss_run(ss_ctx *ctx);
+bool ss_run(ss_ctx *ctx, int port);
 void ss_log(ss_ctx *ctx, int level, const char *format, ...);
+
+#define ss_err(ctx, ...) ss_log((ctx), SS_LOG_ERROR, __VA_ARGS__)
 
 #endif
