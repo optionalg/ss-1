@@ -11,6 +11,7 @@
 #include <fcntl.h>
 
 #include <ev.h>
+#include <pthread.h>
 
 ss_ctx *ss_new(ss_cbk cbk, void *cbk_arg) {
     ss_ctx *ctx = malloc(sizeof(ss_ctx));
@@ -49,6 +50,23 @@ typedef struct __listen_watcher {
     ss_ctx *ctx;
 } listen_watcher;
 
+typedef struct __client_thread {
+    pthread_t thread;
+    ss_ctx *ctx;
+    int sd;
+} client_thread;
+
+static void *client_main(void *arg) {
+    client_thread *thread = arg;
+    ss_ctx *ctx = thread->ctx;
+    int sd = thread->sd;
+    int ret = 0;
+
+    ctx->cbk(ctx, sd, ctx->cbk_arg);
+    pthread_exit(&ret);
+    // TODO join and free
+}
+
 static void listen_cb(EV_P_ struct ev_io *ew, int events) {
     listen_watcher *lw = (listen_watcher*)ew;
     ss_ctx *ctx = lw->ctx;
@@ -56,19 +74,38 @@ static void listen_cb(EV_P_ struct ev_io *ew, int events) {
     socklen_t slen = sizeof(sin);
     int lsd = ew->fd;
     int csd = -1;
+    client_thread *thread = NULL;
+    int error = 0;
 
     csd = accept(lsd, (struct sockaddr*)&sin, &slen);
     if (csd < 0) {
         ss_err(ctx, "failed to accept client socket: %s\n", strerror(errno));
         goto err;
     }
-    ctx->cbk(ctx, csd, ctx->cbk_arg);
+
+    thread = malloc(sizeof(client_thread));
+    if (!thread) {
+        ss_err(ctx, "failed to allocate client thread: %s\n", strerror(errno));
+        goto err;
+    }
+    thread->ctx = ctx;
+    thread->sd = csd;
+
+    error = pthread_create((pthread_t*)thread, NULL, client_main, thread);
+    if (error != 0) {
+        ss_err(ctx, "failed to create thread: %s\n", strerror(error));
+        goto err;
+    }
 
     return;
 
 err:
     if (csd >= 0) {
         close(csd);
+    }
+
+    if (thread) {
+        free(thread);
     }
 }
 
