@@ -59,10 +59,11 @@ typedef struct __client_thread {
 static void *client_main(void *arg) {
     client_thread *thread = arg;
     ss_ctx *ctx = thread->ctx;
+    ss_logger *logger = &ctx->logger;
     int sd = thread->sd;
     int ret = 0;
 
-    ctx->cbk(ctx, sd, ctx->cbk_arg);
+    ctx->cbk(logger, sd, ctx->cbk_arg);
     pthread_exit(&ret);
     // TODO join and free
 }
@@ -70,6 +71,7 @@ static void *client_main(void *arg) {
 static void listen_cb(EV_P_ struct ev_io *ew, int events) {
     listen_watcher *lw = (listen_watcher*)ew;
     ss_ctx *ctx = lw->ctx;
+    ss_logger *logger = &ctx->logger;
     struct sockaddr_in sin;
     socklen_t slen = sizeof(sin);
     int lsd = ew->fd;
@@ -79,13 +81,13 @@ static void listen_cb(EV_P_ struct ev_io *ew, int events) {
 
     csd = accept(lsd, (struct sockaddr*)&sin, &slen);
     if (csd < 0) {
-        ss_err(ctx, "failed to accept client socket: %s\n", strerror(errno));
+        ss_err(logger, "failed to accept client socket: %s\n", strerror(errno));
         goto err;
     }
 
     thread = malloc(sizeof(client_thread));
     if (!thread) {
-        ss_err(ctx, "failed to allocate client thread: %s\n", strerror(errno));
+        ss_err(logger, "failed to allocate client thread: %s\n", strerror(errno));
         goto err;
     }
     thread->ctx = ctx;
@@ -93,7 +95,7 @@ static void listen_cb(EV_P_ struct ev_io *ew, int events) {
 
     error = pthread_create((pthread_t*)thread, NULL, client_main, thread);
     if (error != 0) {
-        ss_err(ctx, "failed to create thread: %s\n", strerror(error));
+        ss_err(logger, "failed to create thread: %s\n", strerror(error));
         goto err;
     }
 
@@ -110,12 +112,13 @@ err:
 }
 
 static void run(ss_ctx *ctx, int sd) {
+    ss_logger *logger = &ctx->logger;
     struct ev_loop *loop = EV_DEFAULT;
     listen_watcher lw;
     ev_io *ew = (ev_io*)&lw;
 
     if (!loop) {
-        ss_err(ctx, "failed to allocate event loop\n");
+        ss_err(logger, "failed to allocate event loop\n");
         return;
     }
 
@@ -128,10 +131,11 @@ static void run(ss_ctx *ctx, int sd) {
 bool ss_run(ss_ctx *ctx, int port) {
     int sd = -1;
     struct sockaddr_in sin;
+    ss_logger *logger = &ctx->logger;
 
     sd = socket(AF_INET, SOCK_STREAM, 0);
     if (sd < 0) {
-        ss_err(ctx, "failed to create listen socket: %s\n", strerror(errno));
+        ss_err(logger, "failed to create listen socket: %s\n", strerror(errno));
         goto err;
     }
 
@@ -140,18 +144,18 @@ bool ss_run(ss_ctx *ctx, int port) {
     // TODO listenするアドレスを選べるようにする。
     sin.sin_addr.s_addr = htonl(INADDR_ANY);
     if (bind(sd, (struct sockaddr*)&sin, sizeof(sin)) < 0) {
-        ss_err(ctx, "failed to bind, port = %d: %s\n", port, strerror(errno));
+        ss_err(logger, "failed to bind, port = %d: %s\n", port, strerror(errno));
         goto err;
     }
 
     // TODO バックログの値を設定可能にする。
     if (listen(sd, SOMAXCONN) < 0) {
-        ss_err(ctx, "failed to listen: %s\n", strerror(errno));
+        ss_err(logger, "failed to listen: %s\n", strerror(errno));
         goto err;
     }
 
     if (set_nonblock(sd) < 0) {
-        ss_err(ctx, "failed to set nonblock: %s\n", strerror(errno));
+        ss_err(logger, "failed to set nonblock: %s\n", strerror(errno));
         goto err;
     }
 
@@ -169,13 +173,13 @@ err:
     return false;
 }
 
-void ss_log(ss_ctx *ctx, int level, const char *format, ...) {
-    if (level <= ctx->logger.level) {
+void ss_log(ss_logger *logger, int level, const char *format, ...) {
+    if (level <= logger->level) {
         va_list args;
-        pthread_mutex_lock(&(ctx->logger.mutex));
+        pthread_mutex_lock(&(logger->mutex));
         va_start(args, format);
-        vdprintf(ctx->logger.fd, format, args);
+        vdprintf(logger->fd, format, args);
         va_end(args);
-        pthread_mutex_unlock(&(ctx->logger.mutex));
+        pthread_mutex_unlock(&(logger->mutex));
     }
 }

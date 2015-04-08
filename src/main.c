@@ -2,8 +2,8 @@
 
 #include "ss.h"
 
-void cbk(ss_ctx *ctx, int socket, void *arg) {
-    ss_log(ctx, SS_LOG_INFO, "Hello %s\n", "World");
+void cbk(ss_logger *logger, int socket, void *arg) {
+    ss_log(logger, SS_LOG_INFO, "Hello %s\n", "World");
 }
 
 int main(void) {
