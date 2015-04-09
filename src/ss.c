@@ -67,6 +67,37 @@ static void *thread_main(void *arg) {
     // TODO join and free
 }
 
+static bool thread_spawn(ss_ctx *ctx, int sd) {
+    ss_thread *thread = NULL;
+    ss_logger *logger = &ctx->logger;
+    int error;
+
+    thread = malloc(sizeof(ss_thread));
+    if (!thread) {
+        ss_err(logger, "failed to allocate thread: %s\n", strerror(errno));
+        goto err;
+    }
+    thread->sd = sd;
+    thread->logger = logger;
+    thread->cbk = ctx->cbk;
+    thread->cbk_arg = ctx->cbk_arg;
+
+    error = pthread_create((pthread_t*)thread, NULL, thread_main, thread);
+    if (error != 0) {
+        ss_err(logger, "failed to start thread: %s\n", strerror(error));
+        goto err;
+    }
+
+    return true;
+
+err:
+    if (thread) {
+        free(thread);
+    }
+
+    return false;
+}
+
 static void listen_cb(EV_P_ struct ev_io *ew, int events) {
     listen_watcher *lw = (listen_watcher*)ew;
     ss_ctx *ctx = lw->ctx;
@@ -75,8 +106,6 @@ static void listen_cb(EV_P_ struct ev_io *ew, int events) {
     socklen_t slen = sizeof(sin);
     int lsd = ew->fd;
     int csd = -1;
-    ss_thread *thread = NULL;
-    int error = 0;
 
     csd = accept(lsd, (struct sockaddr*)&sin, &slen);
     if (csd < 0) {
@@ -84,19 +113,8 @@ static void listen_cb(EV_P_ struct ev_io *ew, int events) {
         goto err;
     }
 
-    thread = malloc(sizeof(ss_thread));
-    if (!thread) {
-        ss_err(logger, "failed to allocate client thread: %s\n", strerror(errno));
-        goto err;
-    }
-    thread->logger = logger;
-    thread->sd = csd;
-    thread->cbk = ctx->cbk;
-    thread->cbk_arg = ctx->cbk_arg;
-
-    error = pthread_create((pthread_t*)thread, NULL, thread_main, thread);
-    if (error != 0) {
-        ss_err(logger, "failed to create thread: %s\n", strerror(error));
+    if (!thread_spawn(ctx, csd)) {
+        ss_err(logger, "failed to spawn client thread\n");
         goto err;
     }
 
@@ -105,10 +123,6 @@ static void listen_cb(EV_P_ struct ev_io *ew, int events) {
 err:
     if (csd >= 0) {
         close(csd);
-    }
-
-    if (thread) {
-        free(thread);
     }
 }
 
