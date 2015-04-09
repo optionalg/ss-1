@@ -12,6 +12,7 @@
 
 #include <ev.h>
 #include <pthread.h>
+#include <assert.h>
 
 ss_ctx *ss_new(ss_cbk cbk, void *cbk_arg) {
     ss_ctx *ctx = malloc(sizeof(ss_ctx));
@@ -22,7 +23,7 @@ ss_ctx *ss_new(ss_cbk cbk, void *cbk_arg) {
     ctx->cbk = cbk;
     ctx->cbk_arg = cbk_arg;
 
-    ctx->threads.all = NULL;
+    ctx->threads.head = NULL;
     ctx->threads.free = NULL;
     pthread_mutex_init(&(ctx->threads.mutex), NULL);
 
@@ -67,6 +68,34 @@ static void *thread_main(void *arg) {
     // TODO join and free
 }
 
+static bool thread_register(ss_ctx *ctx, ss_thread *thread) {
+    ss_logger *logger = &ctx->logger;
+    ss_threads *threads = &ctx->threads;
+    ss_list *list = NULL;
+
+    list = malloc(sizeof(ss_list));
+    if (!list) {
+        ss_err(logger, "failed to allocate list: %s\n", strerror(errno));
+        return false;
+    }
+    list->prev = NULL;
+    list->next = NULL;
+    list->data = thread;
+
+    pthread_mutex_lock(&threads->mutex);
+    if (threads->head) {
+        assert(threads->head->prev == NULL);
+        list->next = threads->head;
+        threads->head->prev = list;
+        threads->head = list;
+    } else {
+        threads->head = list;
+    }
+    pthread_mutex_unlock(&threads->mutex);
+
+    return true;
+}
+
 static bool thread_spawn(ss_ctx *ctx, int sd) {
     ss_thread *thread = NULL;
     ss_logger *logger = &ctx->logger;
@@ -81,6 +110,11 @@ static bool thread_spawn(ss_ctx *ctx, int sd) {
     thread->logger = logger;
     thread->cbk = ctx->cbk;
     thread->cbk_arg = ctx->cbk_arg;
+
+    if (!thread_register(ctx, thread)) {
+        ss_err(logger, "failed to register thread\n");
+        goto err;
+    }
 
     error = pthread_create((pthread_t*)thread, NULL, thread_main, thread);
     if (error != 0) {

@@ -38,7 +38,7 @@ typedef struct __ss_list {
 } ss_list;
 
 typedef struct __ss_threads {
-    ss_list *all;
+    ss_list *head;
     ss_list *free;
     pthread_mutex_t mutex;
 } ss_threads;
