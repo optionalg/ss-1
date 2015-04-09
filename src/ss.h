@@ -38,8 +38,8 @@ typedef struct __ss_list {
 } ss_list;
 
 typedef struct __ss_threads {
-    ss_list *head;
-    ss_list *free;
+    ss_list *live;
+    ss_list *dead;
     pthread_mutex_t mutex;
 } ss_threads;
 

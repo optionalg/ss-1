@@ -23,8 +23,8 @@ ss_ctx *ss_new(ss_cbk cbk, void *cbk_arg) {
     ctx->cbk = cbk;
     ctx->cbk_arg = cbk_arg;
 
-    ctx->threads.head = NULL;
-    ctx->threads.free = NULL;
+    ctx->threads.live = NULL;
+    ctx->threads.dead = NULL;
     pthread_mutex_init(&(ctx->threads.mutex), NULL);
 
     ctx->logger.level = SS_DEFAULT_LOG_LEVEL;
@@ -83,13 +83,13 @@ static bool thread_register(ss_ctx *ctx, ss_thread *thread) {
     list->data = thread;
 
     pthread_mutex_lock(&threads->mutex);
-    if (threads->head) {
-        assert(threads->head->prev == NULL);
-        list->next = threads->head;
-        threads->head->prev = list;
-        threads->head = list;
+    if (threads->live) {
+        assert(threads->live->prev == NULL);
+        list->next = threads->live;
+        threads->live->prev = list;
+        threads->live = list;
     } else {
-        threads->head = list;
+        threads->live = list;
     }
     pthread_mutex_unlock(&threads->mutex);
 
