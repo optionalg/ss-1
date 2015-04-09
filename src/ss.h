@@ -22,9 +22,31 @@ typedef struct __ss_logger {
 
 typedef void (*ss_cbk)(ss_logger *logger, int socket, void *arg);
 
+typedef struct __ss_thread {
+    pthread_t thread;
+    int sd;
+    ss_cbk cbk;
+    void *cbk_arg;
+    ss_logger *logger;
+} ss_thread;
+
+struct __ss_list;
+typedef struct __ss_list {
+    struct __ss_list *prev;
+    struct __ss_list *next;
+    void *data;
+} ss_list;
+
+typedef struct __ss_threads {
+    ss_list *all;
+    ss_list *free;
+    pthread_mutex_t mutex;
+} ss_threads;
+
 typedef struct __ss_ctx {
     ss_cbk cbk;
     void *cbk_arg;
+    ss_threads threads;
     ss_logger logger;
 } ss_ctx;
 

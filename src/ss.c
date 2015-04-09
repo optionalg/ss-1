@@ -22,6 +22,10 @@ ss_ctx *ss_new(ss_cbk cbk, void *cbk_arg) {
     ctx->cbk = cbk;
     ctx->cbk_arg = cbk_arg;
 
+    ctx->threads.all = NULL;
+    ctx->threads.free = NULL;
+    pthread_mutex_init(&(ctx->threads.mutex), NULL);
+
     ctx->logger.level = SS_DEFAULT_LOG_LEVEL;
     ctx->logger.fd = SS_DEFAULT_LOG_FD;
     pthread_mutex_init(&(ctx->logger.mutex), NULL);
@@ -50,20 +54,15 @@ typedef struct __listen_watcher {
     ss_ctx *ctx;
 } listen_watcher;
 
-typedef struct __client_thread {
-    pthread_t thread;
-    ss_ctx *ctx;
-    int sd;
-} client_thread;
-
-static void *client_main(void *arg) {
-    client_thread *thread = arg;
-    ss_ctx *ctx = thread->ctx;
-    ss_logger *logger = &ctx->logger;
+static void *thread_main(void *arg) {
+    ss_thread *thread = arg;
+    ss_logger *logger = thread->logger;
+    ss_cbk cbk = thread->cbk;
+    void *cbk_arg = thread->cbk_arg;
     int sd = thread->sd;
     int ret = 0;
 
-    ctx->cbk(logger, sd, ctx->cbk_arg);
+    cbk(logger, sd, cbk_arg);
     pthread_exit(&ret);
     // TODO join and free
 }
@@ -76,7 +75,7 @@ static void listen_cb(EV_P_ struct ev_io *ew, int events) {
     socklen_t slen = sizeof(sin);
     int lsd = ew->fd;
     int csd = -1;
-    client_thread *thread = NULL;
+    ss_thread *thread = NULL;
     int error = 0;
 
     csd = accept(lsd, (struct sockaddr*)&sin, &slen);
@@ -85,15 +84,17 @@ static void listen_cb(EV_P_ struct ev_io *ew, int events) {
         goto err;
     }
 
-    thread = malloc(sizeof(client_thread));
+    thread = malloc(sizeof(ss_thread));
     if (!thread) {
         ss_err(logger, "failed to allocate client thread: %s\n", strerror(errno));
         goto err;
     }
-    thread->ctx = ctx;
+    thread->logger = logger;
     thread->sd = csd;
+    thread->cbk = ctx->cbk;
+    thread->cbk_arg = ctx->cbk_arg;
 
-    error = pthread_create((pthread_t*)thread, NULL, client_main, thread);
+    error = pthread_create((pthread_t*)thread, NULL, thread_main, thread);
     if (error != 0) {
         ss_err(logger, "failed to create thread: %s\n", strerror(error));
         goto err;
