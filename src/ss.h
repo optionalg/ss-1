@@ -22,24 +22,20 @@ typedef struct __ss_logger {
 
 typedef void (*ss_cbk)(ss_logger *logger, int socket, void *arg);
 
+struct __ss_thread;
 typedef struct __ss_thread {
     pthread_t thread;
     int sd;
     ss_cbk cbk;
     void *cbk_arg;
     ss_logger *logger;
+    struct __ss_thread *prev;
+    struct __ss_thread *next;
 } ss_thread;
 
-struct __ss_list;
-typedef struct __ss_list {
-    struct __ss_list *prev;
-    struct __ss_list *next;
-    void *data;
-} ss_list;
-
 typedef struct __ss_threads {
-    ss_list *live;
-    ss_list *dead;
+    ss_thread *live;
+    ss_thread *dead;
     pthread_mutex_t mutex;
 } ss_threads;
 

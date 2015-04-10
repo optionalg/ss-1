@@ -69,27 +69,17 @@ static void *thread_main(void *arg) {
 }
 
 static bool thread_register(ss_ctx *ctx, ss_thread *thread) {
-    ss_logger *logger = &ctx->logger;
     ss_threads *threads = &ctx->threads;
-    ss_list *list = NULL;
-
-    list = malloc(sizeof(ss_list));
-    if (!list) {
-        ss_err(logger, "failed to allocate list: %s\n", strerror(errno));
-        return false;
-    }
-    list->prev = NULL;
-    list->next = NULL;
-    list->data = thread;
 
     pthread_mutex_lock(&threads->mutex);
     if (threads->live) {
-        assert(threads->live->prev == NULL);
-        list->next = threads->live;
-        threads->live->prev = list;
-        threads->live = list;
+        ss_thread *live = threads->live;
+        assert(live->prev == NULL);
+        thread->next = live;
+        live->prev = thread;
+        threads->live = thread;
     } else {
-        threads->live = list;
+        threads->live = thread;
     }
     pthread_mutex_unlock(&threads->mutex);
 
@@ -107,9 +97,11 @@ static bool thread_spawn(ss_ctx *ctx, int sd) {
         goto err;
     }
     thread->sd = sd;
-    thread->logger = logger;
     thread->cbk = ctx->cbk;
     thread->cbk_arg = ctx->cbk_arg;
+    thread->logger = logger;
+    thread->prev = NULL;
+    thread->next = NULL;
 
     if (!thread_register(ctx, thread)) {
         ss_err(logger, "failed to register thread\n");
