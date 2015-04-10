@@ -142,6 +142,7 @@ static void *thread_main(void *arg) {
     while (true) {
         thread_wait_sd(th);
         th->cbk(th->logger, th->sd, th->cbk_arg);
+        close(th->sd);
         thread_free(th);
     }
     return NULL;
