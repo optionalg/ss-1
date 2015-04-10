@@ -55,6 +55,20 @@ typedef struct __listen_watcher {
     ss_ctx *ctx;
 } listen_watcher;
 
+static void thread_wait_sd(ss_thread *th) {
+    pthread_mutex_lock(&th->mutex);
+    while (th->sd < 0) {
+        pthread_cond_wait(&th->cond, &th->mutex);
+    }
+    pthread_mutex_unlock(&th->mutex);
+}
+
+static void thread_reset_sd(ss_thread *th) {
+    pthread_mutex_lock(&th->mutex);
+    th->sd = -1;
+    pthread_mutex_unlock(&th->mutex);
+}
+
 static void thread_live(ss_thread *thread) {
     ss_threads *threads = thread->threads;
 
@@ -75,6 +89,9 @@ static void thread_dead(ss_thread *thread) {
     ss_threads *threads = thread->threads;
 
     pthread_mutex_lock(&threads->mutex);
+
+    // reset sd
+    thread_reset_sd(thread);
 
     // unlink from live list
     if (thread->prev == NULL) {
@@ -105,17 +122,13 @@ static void thread_dead(ss_thread *thread) {
 }
 
 static void *thread_main(void *arg) {
-    ss_thread *thread = arg;
-    ss_logger *logger = thread->logger;
-    ss_cbk cbk = thread->cbk;
-    void *cbk_arg = thread->cbk_arg;
-    int sd = thread->sd;
-    int ret = 0;
-
-    cbk(logger, sd, cbk_arg);
-    thread_dead(thread);
-    pthread_exit(&ret);
-    // TODO join and free
+    ss_thread *th = arg;
+    while (true) {
+        thread_wait_sd(th);
+        th->cbk(th->logger, th->sd, th->cbk_arg);
+        thread_dead(th);
+    }
+    return NULL;
 }
 
 static bool thread_spawn(ss_ctx *ctx, int sd) {
@@ -128,6 +141,8 @@ static bool thread_spawn(ss_ctx *ctx, int sd) {
         ss_err(logger, "failed to allocate thread: %s\n", strerror(errno));
         goto err;
     }
+    pthread_cond_init(&thread->cond, NULL);
+    pthread_mutex_init(&thread->mutex, NULL);
     thread->sd = sd;
     thread->cbk = ctx->cbk;
     thread->cbk_arg = ctx->cbk_arg;

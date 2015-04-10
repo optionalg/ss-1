@@ -26,6 +26,8 @@ struct __ss_thread;
 struct __ss_threads;
 typedef struct __ss_thread {
     pthread_t thread;
+    pthread_cond_t cond;
+    pthread_mutex_t mutex;
     int sd;
     ss_cbk cbk;
     void *cbk_arg;
