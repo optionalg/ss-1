@@ -56,5 +56,6 @@ bool ss_run(ss_ctx *ctx, int port);
 void ss_log(ss_logger *logger, int level, const char *format, ...);
 
 #define ss_err(logger, ...) ss_log((logger), SS_LOG_ERROR, __VA_ARGS__)
+#define ss_info(logger, ...) ss_log((logger), SS_LOG_INFO, __VA_ARGS__)
 
 #endif

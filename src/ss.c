@@ -60,19 +60,34 @@ static void thread_wait_sd(ss_thread *th) {
     while (th->sd < 0) {
         pthread_cond_wait(&th->cond, &th->mutex);
     }
+    assert(th->sd >= 0);
     pthread_mutex_unlock(&th->mutex);
 }
 
 static void thread_reset_sd(ss_thread *th) {
     pthread_mutex_lock(&th->mutex);
+    assert(th->sd >= 0);
     th->sd = -1;
     pthread_mutex_unlock(&th->mutex);
 }
 
-static void thread_busy(ss_thread *th) {
+static void thread_set_sd(ss_thread *th, int sd) {
+    pthread_mutex_lock(&th->mutex);
+    assert(th->sd < 0);
+    th->sd = sd;
+    pthread_cond_signal(&th->cond);
+    pthread_mutex_unlock(&th->mutex);
+}
+
+static void thread_busy(ss_thread *th, int sd) {
     ss_threads *threads = th->threads;
 
     pthread_mutex_lock(&threads->mutex);
+
+    // set sd
+    thread_set_sd(th, sd);
+
+    // link to busy list
     if (threads->busy) {
         ss_thread *busy = threads->busy;
         assert(busy->prev == NULL);
@@ -82,6 +97,7 @@ static void thread_busy(ss_thread *th) {
     } else {
         threads->busy = th;
     }
+
     pthread_mutex_unlock(&threads->mutex);
 }
 
@@ -131,7 +147,7 @@ static void *thread_main(void *arg) {
     return NULL;
 }
 
-static bool thread_spawn(ss_ctx *ctx, int sd) {
+static ss_thread *thread_spawn(ss_ctx *ctx) {
     ss_thread *th = NULL;
     ss_logger *logger = &ctx->logger;
     int error;
@@ -143,14 +159,13 @@ static bool thread_spawn(ss_ctx *ctx, int sd) {
     }
     pthread_cond_init(&th->cond, NULL);
     pthread_mutex_init(&th->mutex, NULL);
-    th->sd = sd;
+    th->sd = -1;
     th->cbk = ctx->cbk;
     th->cbk_arg = ctx->cbk_arg;
     th->logger = logger;
     th->threads = &ctx->threads;
     th->prev = NULL;
     th->next = NULL;
-    thread_busy(th);
 
     error = pthread_create((pthread_t*)th, NULL, thread_main, th);
     if (error != 0) {
@@ -158,15 +173,41 @@ static bool thread_spawn(ss_ctx *ctx, int sd) {
         goto err;
     }
 
-    return true;
+    return th;
 
 err:
     if (th) {
-        thread_free(th);
         free(th);
     }
 
-    return false;
+    return NULL;
+}
+
+static ss_thread *thread_alloc(ss_ctx *ctx) {
+    ss_logger *logger = &ctx->logger;
+    ss_threads *threads = &ctx->threads;
+    ss_thread *th = NULL;
+
+    pthread_mutex_lock(&threads->mutex);
+
+    if (threads->free) {
+        // unlink from free list
+        th = threads->free;
+        if (th->next) {
+            assert(th->next->prev == th);
+            th->next->prev = NULL;
+        }
+        threads->free = th->next;
+        th->next = NULL;
+        assert(th->prev == NULL);
+    } else {
+        th = thread_spawn(ctx);
+        ss_info(logger, "new thread spawned: th = %p\n", th);
+    }
+
+    pthread_mutex_unlock(&threads->mutex);
+
+    return th;
 }
 
 static void listen_cb(EV_P_ struct ev_io *ew, int events) {
@@ -177,6 +218,7 @@ static void listen_cb(EV_P_ struct ev_io *ew, int events) {
     socklen_t slen = sizeof(sin);
     int lsd = ew->fd;
     int csd = -1;
+    ss_thread *th = NULL;
 
     csd = accept(lsd, (struct sockaddr*)&sin, &slen);
     if (csd < 0) {
@@ -184,10 +226,12 @@ static void listen_cb(EV_P_ struct ev_io *ew, int events) {
         goto err;
     }
 
-    if (!thread_spawn(ctx, csd)) {
-        ss_err(logger, "failed to spawn client thread\n");
+    th = thread_alloc(ctx);
+    if (!th) {
+        ss_err(logger, "failed to allocate client thread\n");
         goto err;
     }
+    thread_busy(th, csd);
 
     return;
 
