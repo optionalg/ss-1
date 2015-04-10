@@ -69,53 +69,53 @@ static void thread_reset_sd(ss_thread *th) {
     pthread_mutex_unlock(&th->mutex);
 }
 
-static void thread_live(ss_thread *thread) {
-    ss_threads *threads = thread->threads;
+static void thread_live(ss_thread *th) {
+    ss_threads *threads = th->threads;
 
     pthread_mutex_lock(&threads->mutex);
     if (threads->live) {
         ss_thread *live = threads->live;
         assert(live->prev == NULL);
-        thread->next = live;
-        live->prev = thread;
-        threads->live = thread;
+        th->next = live;
+        live->prev = th;
+        threads->live = th;
     } else {
-        threads->live = thread;
+        threads->live = th;
     }
     pthread_mutex_unlock(&threads->mutex);
 }
 
-static void thread_dead(ss_thread *thread) {
-    ss_threads *threads = thread->threads;
+static void thread_dead(ss_thread *th) {
+    ss_threads *threads = th->threads;
 
     pthread_mutex_lock(&threads->mutex);
 
     // reset sd
-    thread_reset_sd(thread);
+    thread_reset_sd(th);
 
     // unlink from live list
-    if (thread->prev == NULL) {
-        assert(threads->live == thread);
-        threads->live = thread->next;
+    if (th->prev == NULL) {
+        assert(threads->live == th);
+        threads->live = th->next;
     } else {
-        assert(threads->live != thread);
-        thread->prev->next = thread->next;
+        assert(threads->live != th);
+        th->prev->next = th->next;
     }
-    if (thread->next != NULL) {
-        thread->next->prev = thread->prev;
+    if (th->next != NULL) {
+        th->next->prev = th->prev;
     }
-    thread->prev = NULL;
-    thread->next = NULL;
+    th->prev = NULL;
+    th->next = NULL;
 
     // link to dead list
     if (threads->dead) {
         ss_thread *dead = threads->dead;
         assert(dead->prev == NULL);
-        thread->next = dead;
-        dead->prev = thread;
-        threads->dead = thread;
+        th->next = dead;
+        dead->prev = th;
+        threads->dead = th;
     } else {
-        threads->dead = thread;
+        threads->dead = th;
     }
 
     pthread_mutex_unlock(&threads->mutex);
@@ -132,27 +132,27 @@ static void *thread_main(void *arg) {
 }
 
 static bool thread_spawn(ss_ctx *ctx, int sd) {
-    ss_thread *thread = NULL;
+    ss_thread *th = NULL;
     ss_logger *logger = &ctx->logger;
     int error;
 
-    thread = malloc(sizeof(ss_thread));
-    if (!thread) {
+    th = malloc(sizeof(ss_thread));
+    if (!th) {
         ss_err(logger, "failed to allocate thread: %s\n", strerror(errno));
         goto err;
     }
-    pthread_cond_init(&thread->cond, NULL);
-    pthread_mutex_init(&thread->mutex, NULL);
-    thread->sd = sd;
-    thread->cbk = ctx->cbk;
-    thread->cbk_arg = ctx->cbk_arg;
-    thread->logger = logger;
-    thread->threads = &ctx->threads;
-    thread->prev = NULL;
-    thread->next = NULL;
-    thread_live(thread);
+    pthread_cond_init(&th->cond, NULL);
+    pthread_mutex_init(&th->mutex, NULL);
+    th->sd = sd;
+    th->cbk = ctx->cbk;
+    th->cbk_arg = ctx->cbk_arg;
+    th->logger = logger;
+    th->threads = &ctx->threads;
+    th->prev = NULL;
+    th->next = NULL;
+    thread_live(th);
 
-    error = pthread_create((pthread_t*)thread, NULL, thread_main, thread);
+    error = pthread_create((pthread_t*)th, NULL, thread_main, th);
     if (error != 0) {
         ss_err(logger, "failed to start thread: %s\n", strerror(error));
         goto err;
@@ -161,9 +161,9 @@ static bool thread_spawn(ss_ctx *ctx, int sd) {
     return true;
 
 err:
-    if (thread) {
-        thread_dead(thread);
-        free(thread);
+    if (th) {
+        thread_dead(th);
+        free(th);
     }
 
     return false;
