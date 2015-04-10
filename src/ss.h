@@ -23,12 +23,14 @@ typedef struct __ss_logger {
 typedef void (*ss_cbk)(ss_logger *logger, int socket, void *arg);
 
 struct __ss_thread;
+struct __ss_threads;
 typedef struct __ss_thread {
     pthread_t thread;
     int sd;
     ss_cbk cbk;
     void *cbk_arg;
     ss_logger *logger;
+    struct __ss_threads *threads;
     struct __ss_thread *prev;
     struct __ss_thread *next;
 } ss_thread;

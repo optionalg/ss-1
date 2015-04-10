@@ -55,21 +55,8 @@ typedef struct __listen_watcher {
     ss_ctx *ctx;
 } listen_watcher;
 
-static void *thread_main(void *arg) {
-    ss_thread *thread = arg;
-    ss_logger *logger = thread->logger;
-    ss_cbk cbk = thread->cbk;
-    void *cbk_arg = thread->cbk_arg;
-    int sd = thread->sd;
-    int ret = 0;
-
-    cbk(logger, sd, cbk_arg);
-    pthread_exit(&ret);
-    // TODO join and free
-}
-
-static bool thread_register(ss_ctx *ctx, ss_thread *thread) {
-    ss_threads *threads = &ctx->threads;
+static void thread_live(ss_thread *thread) {
+    ss_threads *threads = thread->threads;
 
     pthread_mutex_lock(&threads->mutex);
     if (threads->live) {
@@ -82,8 +69,53 @@ static bool thread_register(ss_ctx *ctx, ss_thread *thread) {
         threads->live = thread;
     }
     pthread_mutex_unlock(&threads->mutex);
+}
 
-    return true;
+static void thread_dead(ss_thread *thread) {
+    ss_threads *threads = thread->threads;
+
+    pthread_mutex_lock(&threads->mutex);
+
+    // unlink from live list
+    if (thread->prev == NULL) {
+        assert(threads->live == thread);
+        threads->live = thread->next;
+    } else {
+        assert(threads->live != thread);
+        thread->prev->next = thread->next;
+    }
+    if (thread->next != NULL) {
+        thread->next->prev = thread->prev;
+    }
+    thread->prev = NULL;
+    thread->next = NULL;
+
+    // link to dead list
+    if (threads->dead) {
+        ss_thread *dead = threads->dead;
+        assert(dead->prev == NULL);
+        thread->next = dead;
+        dead->prev = thread;
+        threads->dead = thread;
+    } else {
+        threads->dead = thread;
+    }
+
+    pthread_mutex_unlock(&threads->mutex);
+}
+
+static void *thread_main(void *arg) {
+    ss_thread *thread = arg;
+    ss_logger *logger = thread->logger;
+    ss_cbk cbk = thread->cbk;
+    void *cbk_arg = thread->cbk_arg;
+    int sd = thread->sd;
+    int ret = 0;
+
+    cbk(logger, sd, cbk_arg);
+    thread_dead(thread);
+    pthread_exit(&ret);
+    // TODO join and free
 }
 
 static bool thread_spawn(ss_ctx *ctx, int sd) {
@@ -100,13 +132,10 @@ static bool thread_spawn(ss_ctx *ctx, int sd) {
     thread->cbk = ctx->cbk;
     thread->cbk_arg = ctx->cbk_arg;
     thread->logger = logger;
+    thread->threads = &ctx->threads;
     thread->prev = NULL;
     thread->next = NULL;
-
-    if (!thread_register(ctx, thread)) {
-        ss_err(logger, "failed to register thread\n");
-        goto err;
-    }
+    thread_live(thread);
 
     error = pthread_create((pthread_t*)thread, NULL, thread_main, thread);
     if (error != 0) {
@@ -118,6 +147,7 @@ static bool thread_spawn(ss_ctx *ctx, int sd) {
 
 err:
     if (thread) {
+        thread_dead(thread);
         free(thread);
     }
 
