@@ -71,12 +71,10 @@ static void listen_cb(EV_P_ struct ev_io *ew, int events) {
         goto err;
     }
 
-    th = thread_alloc(ctx);
-    if (!th) {
-        ss_err(logger, "failed to allocate client thread\n");
+    if (!thread_run(ctx, csd)) {
+        ss_err(logger, "failed to run client thread\n");
         goto err;
     }
-    thread_busy(th, csd);
 
     return;
 

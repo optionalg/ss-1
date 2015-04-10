@@ -1,9 +1,8 @@
-#ifndef __SS_THREAD_H__
-#define __SS_THREAD_H__
+#ifndef __SS_SRC_THREAD_H__
+#define __SS_SRC_THREAD_H__
 
 #include "ss.h"
 
-void thread_busy(ss_thread *th, int sd);
-ss_thread *thread_alloc(ss_ctx *ctx);
+bool thread_run(ss_ctx *ctx, int sd);
 
 #endif

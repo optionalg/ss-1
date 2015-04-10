@@ -1,3 +1,4 @@
+#include "ss.h"
 #include "thread.h"
 
 #include <string.h>
@@ -28,6 +29,28 @@ static void thread_set_sd(ss_thread *th, int sd) {
     th->sd = sd;
     pthread_cond_signal(&th->cond);
     pthread_mutex_unlock(&th->mutex);
+}
+
+static void thread_busy(ss_thread *th, int sd) {
+    ss_threads *threads = th->threads;
+
+    pthread_mutex_lock(&threads->mutex);
+
+    // set sd
+    thread_set_sd(th, sd);
+
+    // link to busy list
+    if (threads->busy) {
+        ss_thread *busy = threads->busy;
+        assert(busy->prev == NULL);
+        th->next = busy;
+        busy->prev = th;
+        threads->busy = th;
+    } else {
+        threads->busy = th;
+    }
+
+    pthread_mutex_unlock(&threads->mutex);
 }
 
 static void thread_free(ss_thread *th) {
@@ -113,7 +136,7 @@ err:
     return NULL;
 }
 
-ss_thread *thread_alloc(ss_ctx *ctx) {
+static ss_thread *thread_alloc(ss_ctx *ctx) {
     ss_logger *logger = &ctx->logger;
     ss_threads *threads = &ctx->threads;
     ss_thread *th = NULL;
@@ -140,24 +163,15 @@ ss_thread *thread_alloc(ss_ctx *ctx) {
     return th;
 }
 
-void thread_busy(ss_thread *th, int sd) {
-    ss_threads *threads = th->threads;
+bool thread_run(ss_ctx *ctx, int sd) {
+    ss_logger *logger = &ctx->logger;
+    ss_thread *th = thread_alloc(ctx);
 
-    pthread_mutex_lock(&threads->mutex);
-
-    // set sd
-    thread_set_sd(th, sd);
-
-    // link to busy list
-    if (threads->busy) {
-        ss_thread *busy = threads->busy;
-        assert(busy->prev == NULL);
-        th->next = busy;
-        busy->prev = th;
-        threads->busy = th;
+    if (th) {
+        thread_busy(th, sd);
+        return true;
     } else {
-        threads->busy = th;
+        ss_err(logger, "failed to allocate client thread\n");
+        return false;
     }
-
-    pthread_mutex_unlock(&threads->mutex);
 }

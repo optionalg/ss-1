@@ -1,5 +1,5 @@
-#ifndef __SS_H__
-#define __SS_H__
+#ifndef __SS_SRC_SS_H__
+#define __SS_SRC_SS_H__
 
 #include <stdbool.h>
 #include <pthread.h>
