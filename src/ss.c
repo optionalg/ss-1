@@ -37,7 +37,7 @@ void ss_free(ss_ctx *ctx) {
     free(ctx);
 }
 
-static int update_fopts(int fd, int opt) {
+static int set_fopts(int fd, int opt) {
     int opts = fcntl(fd, F_GETFL, 0);
     if (opts == -1) {
         return -1;
@@ -45,8 +45,20 @@ static int update_fopts(int fd, int opt) {
     return fcntl(fd, F_SETFL, opts | opt);
 }
 
+static int clear_fopts(int fd, int opt) {
+    int opts = fcntl(fd, F_GETFL, 0);
+    if (opts == -1) {
+        return -1;
+    }
+    return fcntl(fd, F_SETFL, opts & ~opt);
+}
+
 static int set_nonblock(int sd) {
-    return update_fopts(sd, O_NONBLOCK);
+    return set_fopts(sd, O_NONBLOCK);
+}
+
+static int set_block(int sd) {
+    return clear_fopts(sd, O_NONBLOCK);
 }
 
 typedef struct __listen_watcher {
@@ -70,6 +82,12 @@ static void listen_cb(EV_P_ struct ev_io *ew, int events) {
         goto err;
     }
 
+    if (set_block(csd) < 0) {
+        ss_err(logger, "failed to set block: %s\n", strerror(errno));
+        goto err;
+    }
+
+    ss_info(logger, "accept new socket(%d)\n", csd);
     if (!thread_run(ctx, csd)) {
         ss_err(logger, "failed to run client thread\n");
         goto err;
