@@ -35,30 +35,6 @@ err:
     return false;
 }
 
-ss_ctx *ss_new(ss_cbk cbk, void *cbk_arg) {
-    ss_ctx *ctx = malloc(sizeof(ss_ctx));
-
-    if (!ctx) {
-        goto err;
-    }
-    if (!ss_init(ctx, cbk, cbk_arg)) {
-        goto err;
-    }
-
-    return ctx;
-
-err:
-    if (ctx) {
-        free(ctx);
-    }
-
-    return NULL;
-}
-
-void ss_free(ss_ctx *ctx) {
-    free(ctx);
-}
-
 static int set_fopts(int fd, int opt) {
     int opts = fcntl(fd, F_GETFL, 0);
     if (opts == -1) {
