@@ -101,7 +101,7 @@ err:
     }
 }
 
-static void run(ss_ctx *ctx, int sd) {
+bool ss_run(ss_ctx *ctx, int listen_sd) {
     ss_logger *logger = &ctx->logger;
     struct ev_loop *loop = EV_DEFAULT;
     listen_watcher lw;
@@ -109,16 +109,18 @@ static void run(ss_ctx *ctx, int sd) {
 
     if (!loop) {
         ss_err(logger, "failed to allocate event loop\n");
-        return;
+        return false;
     }
 
     lw.ctx = ctx;
-    ev_io_init(ew, listen_cb, sd, EV_READ);
+    ev_io_init(ew, listen_cb, listen_sd, EV_READ);
     ev_io_start(loop, ew);
     ev_loop(loop, 0);
+
+    return true;
 }
 
-bool ss_run(ss_ctx *ctx, int port) {
+int ss_listen(ss_ctx *ctx, int port) {
     int sd = -1;
     struct sockaddr_in sin;
     ss_logger *logger = &ctx->logger;
@@ -149,16 +151,12 @@ bool ss_run(ss_ctx *ctx, int port) {
         goto err;
     }
 
-    run(ctx, sd);
-
-    close(sd);
-
-    return true;
+    return sd;
 
 err:
     if (sd >= 0) {
         close(sd);
     }
 
-    return false;
+    return -1;
 }
