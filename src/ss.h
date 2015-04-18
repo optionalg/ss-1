@@ -51,6 +51,7 @@ typedef struct __ss_ctx {
 } ss_ctx;
 
 ss_ctx *ss_new(ss_cbk cbk, void *cbk_arg);
+bool ss_init(ss_ctx *ctx, ss_cbk cbk, void *cbk_arg);
 int ss_listen(ss_ctx *ctx, int port);
 void ss_free(ss_ctx *ctx);
 bool ss_run(ss_ctx *ctx, int listen_fd);

@@ -13,24 +13,46 @@
 
 #include <ev.h>
 
-ss_ctx *ss_new(ss_cbk cbk, void *cbk_arg) {
-    ss_ctx *ctx = malloc(sizeof(ss_ctx));
-    if (!ctx) {
-        return NULL;
-    }
-
+bool ss_init(ss_ctx *ctx, ss_cbk cbk, void *cbk_arg) {
     ctx->cbk = cbk;
     ctx->cbk_arg = cbk_arg;
 
     ctx->threads.busy = NULL;
     ctx->threads.free = NULL;
-    pthread_mutex_init(&(ctx->threads.mutex), NULL);
+    if (pthread_mutex_init(&(ctx->threads.mutex), NULL) != 0) {
+        goto err;
+    }
 
     ctx->logger.level = SS_DEFAULT_LOG_LEVEL;
     ctx->logger.fd = SS_DEFAULT_LOG_FD;
-    pthread_mutex_init(&(ctx->logger.mutex), NULL);
+    if (pthread_mutex_init(&(ctx->logger.mutex), NULL) != 0) {
+        goto err;
+    }
+
+    return true;
+
+err:
+    return false;
+}
+
+ss_ctx *ss_new(ss_cbk cbk, void *cbk_arg) {
+    ss_ctx *ctx = malloc(sizeof(ss_ctx));
+
+    if (!ctx) {
+        goto err;
+    }
+    if (!ss_init(ctx, cbk, cbk_arg)) {
+        goto err;
+    }
 
     return ctx;
+
+err:
+    if (ctx) {
+        free(ctx);
+    }
+
+    return NULL;
 }
 
 void ss_free(ss_ctx *ctx) {
