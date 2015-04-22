@@ -85,7 +85,7 @@ static void listen_cb(EV_P_ struct ev_io *ew, int events) {
         goto err;
     }
 
-    ss_info(logger, "accept new socket(%d)\n", csd);
+    ss_debug(logger, "accept new socket(%d)\n", csd);
     if (!thread_run(ctx, csd)) {
         ss_err(logger, "failed to run client thread\n");
         goto err;
