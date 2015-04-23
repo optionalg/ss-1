@@ -155,7 +155,7 @@ static ss_thread *thread_alloc(ss_ctx *ctx) {
         assert(th->prev == NULL);
     } else {
         th = thread_spawn(ctx);
-        ss_info(logger, "new thread spawned: th = %p\n", th);
+        ss_debug(logger, "new thread spawned: th = %p\n", th);
     }
 
     pthread_mutex_unlock(&threads->mutex);
