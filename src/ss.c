@@ -10,6 +10,8 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 #include <ev.h>
 
@@ -118,7 +120,32 @@ bool ss_run(ss_ctx *ctx, int listen_sd) {
     return true;
 }
 
-int ss_listen(ss_ctx *ctx, int port) {
+bool bind_listen_set_nonblock(ss_ctx *ctx, int sd, struct sockaddr *addr, socklen_t addrlen) {
+    ss_logger *logger = &ctx->logger;
+
+    if (bind(sd, addr, addrlen) < 0) {
+        ss_err(logger, "failed to bind: %s\n", strerror(errno));
+        goto err;
+    }
+
+    // TODO バックログの値を設定可能にする。
+    if (listen(sd, SOMAXCONN) < 0) {
+        ss_err(logger, "failed to listen: %s\n", strerror(errno));
+        goto err;
+    }
+
+    if (set_nonblock(sd) < 0) {
+        ss_err(logger, "failed to set nonblock: %s\n", strerror(errno));
+        goto err;
+    }
+
+    return true;
+
+err:
+    return false;
+}
+
+int ss_listen_tcp(ss_ctx *ctx, int port) {
     int sd = -1;
     struct sockaddr_in sin;
     ss_logger *logger = &ctx->logger;
@@ -133,19 +160,40 @@ int ss_listen(ss_ctx *ctx, int port) {
     sin.sin_port = htons(port);
     // TODO listenするアドレスを選べるようにする。
     sin.sin_addr.s_addr = htonl(INADDR_ANY);
-    if (bind(sd, (struct sockaddr*)&sin, sizeof(sin)) < 0) {
-        ss_err(logger, "failed to bind, port = %d: %s\n", port, strerror(errno));
+    if (!bind_listen_set_nonblock(ctx, sd, (struct sockaddr*)&sin, sizeof(sin))) {
         goto err;
     }
 
-    // TODO バックログの値を設定可能にする。
-    if (listen(sd, SOMAXCONN) < 0) {
-        ss_err(logger, "failed to listen: %s\n", strerror(errno));
+    return sd;
+
+err:
+    if (sd >= 0) {
+        close(sd);
+    }
+
+    return -1;
+}
+
+int ss_listen_uds(ss_ctx *ctx, const char *path) {
+    int sd = -1;
+    struct sockaddr_un sun;
+    ss_logger *logger = &ctx->logger;
+
+    sd = socket(AF_UNIX, SOCK_STREAM, 0);
+
+    if (sd < 0) {
+        ss_err(logger, "failed to create listen socket: %s\n", strerror(errno));
         goto err;
     }
 
-    if (set_nonblock(sd) < 0) {
-        ss_err(logger, "failed to set nonblock: %s\n", strerror(errno));
+    if (strlen(path) + 1 > sizeof(sun.sun_path)) {
+        ss_err(logger, "too long path: %s\n", path);
+        goto err;
+    }
+
+    sun.sun_family = AF_UNIX;
+    strcpy(sun.sun_path, path);
+    if (!bind_listen_set_nonblock(ctx, sd, (struct sockaddr*)&sun, sizeof(sun))) {
         goto err;
     }
 

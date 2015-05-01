@@ -16,7 +16,12 @@ int main(void) {
         goto err;
     }
 
-    listen_sd = ss_listen(&ctx, 1234);
+#ifdef USE_UNIX_DOMAIN_SOCKET
+    unlink("/tmp/ss.sock");
+    listen_sd = ss_listen_uds(&ctx, "/tmp/ss.sock");
+#else
+    listen_sd = ss_listen_tcp(&ctx, 1234);
+#endif
     if (listen_sd < 0) {
         fprintf(stderr, "failed to listen port.\n");
         goto err;
