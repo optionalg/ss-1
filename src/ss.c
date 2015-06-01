@@ -145,10 +145,16 @@ err:
     return false;
 }
 
-int ss_listen_tcp(ss_ctx *ctx, int port) {
+int ss_listen_tcp(ss_ctx *ctx, const char *ip, int port) {
     int sd = -1;
     struct sockaddr_in sin;
+    struct in_addr addr;
     ss_logger *logger = &ctx->logger;
+
+    if (!inet_aton(ip, &addr)) {
+        ss_err(logger, "invalid ip: %s\n", ip);
+        goto err;
+    }
 
     sd = socket(AF_INET, SOCK_STREAM, 0);
     if (sd < 0) {
@@ -158,8 +164,7 @@ int ss_listen_tcp(ss_ctx *ctx, int port) {
 
     sin.sin_family = AF_INET;
     sin.sin_port = htons(port);
-    // TODO listenするアドレスを選べるようにする。
-    sin.sin_addr.s_addr = htonl(INADDR_ANY);
+    sin.sin_addr = addr;
     if (!bind_listen_set_nonblock(ctx, sd, (struct sockaddr*)&sin, sizeof(sin))) {
         goto err;
     }

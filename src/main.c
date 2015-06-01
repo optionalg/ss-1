@@ -20,7 +20,7 @@ int main(void) {
     unlink("/tmp/ss.sock");
     listen_sd = ss_listen_uds(&ctx, "/tmp/ss.sock");
 #else
-    listen_sd = ss_listen_tcp(&ctx, 1234);
+    listen_sd = ss_listen_tcp(&ctx, "127.0.0.1", 1234);
 #endif
     if (listen_sd < 0) {
         fprintf(stderr, "failed to listen port.\n");
