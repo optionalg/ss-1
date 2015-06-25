@@ -31,7 +31,7 @@ bool ss_logger_init(ss_logger *logger) {
     logger->level = SS_DEFAULT_LOG_LEVEL;
     logger->cbk = default_logger_cbk;
     logger->cbk_arg = (void*)STDERR_FILENO;
-    if (pthread_mutex_init(&(logger->mutex), NULL) == 0) {
+    if (pthread_mutex_init(&(logger->mutex), NULL) != 0) {
         goto err;
     }
     return true;
