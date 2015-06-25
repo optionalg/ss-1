@@ -4,5 +4,6 @@
 #include "ss.h"
 
 bool ss_logger_init(ss_logger *logger);
+void ss_logger_set_cbk(ss_logger *logger, ss_logger_cbk cbk, void *arg);
 
 #endif

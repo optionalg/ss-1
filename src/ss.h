@@ -57,8 +57,8 @@ int ss_listen_tcp(ss_ctx *ctx, const char *ip, int port);
 int ss_listen_uds(ss_ctx *ctx, const char *path);
 void ss_free(ss_ctx *ctx);
 bool ss_run(ss_ctx *ctx, int listen_fd);
+void ss_set_logger_cbk(ss_ctx *ctx, ss_logger_cbk cbk, void *arg);
 void ss_log(ss_logger *logger, int level, const char *format, ...);
-void ss_set_logger_cbk(ss_logger *logger, ss_logger_cbk cbk, void *arg);
 
 #define ss_err(logger, ...) ss_log((logger), SS_LOG_ERROR, __VA_ARGS__)
 #define ss_info(logger, ...) ss_log((logger), SS_LOG_INFO, __VA_ARGS__)

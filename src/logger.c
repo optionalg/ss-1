@@ -16,7 +16,7 @@ void ss_log(ss_logger *logger, int level, const char *format, ...) {
     }
 }
 
-void ss_set_logger_cbk(ss_logger *logger, ss_logger_cbk cbk, void *arg) {
+void ss_logger_set_cbk(ss_logger *logger, ss_logger_cbk cbk, void *arg) {
     pthread_mutex_lock(&(logger->mutex));
     logger->cbk = cbk;
     logger->cbk_arg = arg;

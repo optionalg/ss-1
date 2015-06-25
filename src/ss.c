@@ -36,6 +36,10 @@ err:
     return false;
 }
 
+void ss_set_logger_cbk(ss_ctx *ctx, ss_logger_cbk cbk, void *arg) {
+    ss_logger_set_cbk(&(ctx->logger), cbk, arg);
+}
+
 static int set_fopts(int fd, int opt) {
     int opts = fcntl(fd, F_GETFL, 0);
     if (opts == -1) {
