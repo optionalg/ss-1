@@ -1,6 +1,7 @@
 #ifndef __SS_SRC_SS_H__
 #define __SS_SRC_SS_H__
 
+#include <stdarg.h>
 #include <stdbool.h>
 #include <pthread.h>
 
@@ -10,13 +11,13 @@
 #define SS_LOG_INFO  3
 #define SS_LOG_DEBUG 4
 #define SS_LOG_TRACE 5
-
 #define SS_DEFAULT_LOG_LEVEL SS_LOG_INFO
-#define SS_DEFAULT_LOG_FD 2 // stderr
 
+typedef void (*ss_logger_cbk)(void *arg, const char *format, va_list ap);
 typedef struct __ss_logger {
     int level;
-    int fd;
+    ss_logger_cbk cbk;
+    void *cbk_arg;
     pthread_mutex_t mutex;
 } ss_logger;
 
@@ -57,6 +58,7 @@ int ss_listen_uds(ss_ctx *ctx, const char *path);
 void ss_free(ss_ctx *ctx);
 bool ss_run(ss_ctx *ctx, int listen_fd);
 void ss_log(ss_logger *logger, int level, const char *format, ...);
+void ss_set_logger_cbk(ss_logger *logger, ss_logger_cbk cbk, void *arg);
 
 #define ss_err(logger, ...) ss_log((logger), SS_LOG_ERROR, __VA_ARGS__)
 #define ss_info(logger, ...) ss_log((logger), SS_LOG_INFO, __VA_ARGS__)

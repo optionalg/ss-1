@@ -1,5 +1,6 @@
 #include "ss.h"
 #include "thread.h"
+#include "logger.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,9 +26,7 @@ bool ss_init(ss_ctx *ctx, ss_cbk cbk, void *cbk_arg) {
         goto err;
     }
 
-    ctx->logger.level = SS_DEFAULT_LOG_LEVEL;
-    ctx->logger.fd = SS_DEFAULT_LOG_FD;
-    if (pthread_mutex_init(&(ctx->logger.mutex), NULL) != 0) {
+    if (!ss_logger_init(&(ctx->logger))) {
         goto err;
     }
 
