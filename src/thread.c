@@ -49,6 +49,7 @@ static void thread_busy(ss_thread *th, int sd) {
     } else {
         threads->busy = th;
     }
+    threads->busy_size++;
 
     pthread_mutex_unlock(&threads->mutex);
 }
@@ -74,6 +75,7 @@ static void thread_free(ss_thread *th) {
     }
     th->prev = NULL;
     th->next = NULL;
+    threads->busy_size--;
 
     // link to free list
     if (threads->free) {
@@ -85,6 +87,7 @@ static void thread_free(ss_thread *th) {
     } else {
         threads->free = th;
     }
+    threads->free_size++;
 
     pthread_mutex_unlock(&threads->mutex);
 }
@@ -151,6 +154,7 @@ static ss_thread *thread_alloc(ss_ctx *ctx) {
             th->next->prev = NULL;
         }
         threads->free = th->next;
+        threads->free_size--;
         th->next = NULL;
         assert(th->prev == NULL);
     } else {
@@ -166,6 +170,8 @@ static ss_thread *thread_alloc(ss_ctx *ctx) {
 bool ss_thread_init(ss_threads *threads) {
     threads->busy = NULL;
     threads->free = NULL;
+    threads->busy_size = 0;
+    threads->free_size = 0;
     threads->cache_size = SS_DEFAULT_THREAD_CACHE_SIZE;
     if (pthread_mutex_init(&(threads->mutex), NULL) != 0) {
         goto err;

@@ -42,6 +42,8 @@ typedef struct __ss_thread {
 typedef struct __ss_threads {
     ss_thread *busy;
     ss_thread *free;
+    int busy_size;
+    int free_size;
     int cache_size;
     pthread_mutex_t mutex;
 } ss_threads;
