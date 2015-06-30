@@ -92,15 +92,55 @@ static void thread_free(ss_thread *th) {
     pthread_mutex_unlock(&threads->mutex);
 }
 
+static void thread_exit(ss_thread *th) {
+    ss_threads *threads = th->threads;
+
+    pthread_mutex_lock(&threads->mutex);
+
+    // unlink from busy list
+    if (th->prev == NULL) {
+        assert(threads->busy == th);
+        threads->busy = th->next;
+    } else {
+        assert(threads->busy != th);
+        th->prev->next = th->next;
+    }
+    if (th->next != NULL) {
+        th->next->prev = th->prev;
+    }
+    threads->busy_size--;
+
+    pthread_mutex_unlock(&threads->mutex);
+
+    pthread_detach(th->thread);
+    free(th);
+    pthread_exit(NULL);
+}
+
+static bool is_thread_cache_full(ss_thread *th) {
+    ss_threads *threads = th->threads;
+    bool is_full;
+
+    pthread_mutex_lock(&threads->mutex);
+    is_full = (threads->cache_size >= threads->free_size);
+    pthread_mutex_unlock(&threads->mutex);
+
+    return is_full;
+}
+
 static void *thread_main(void *arg) {
     ss_thread *th = arg;
     while (true) {
         thread_wait_sd(th);
         th->cbk(th->logger, th->sd, th->cbk_arg);
         close(th->sd);
-        thread_free(th);
+        if (is_thread_cache_full(th)) {
+            thread_exit(th);
+        } else {
+            thread_free(th);
+        }
     }
-    return NULL;
+    return NULL; // dummy
 }
 
 static ss_thread *thread_spawn(ss_ctx *ctx) {
