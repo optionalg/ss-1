@@ -20,9 +20,7 @@ bool ss_init(ss_ctx *ctx, ss_cbk cbk, void *cbk_arg) {
     ctx->cbk = cbk;
     ctx->cbk_arg = cbk_arg;
 
-    ctx->threads.busy = NULL;
-    ctx->threads.free = NULL;
-    if (pthread_mutex_init(&(ctx->threads.mutex), NULL) != 0) {
+    if (!ss_thread_init(&(ctx->threads))) {
         goto err;
     }
 
@@ -38,6 +36,10 @@ err:
 
 void ss_set_logger_cbk(ss_ctx *ctx, ss_logger_cbk cbk, void *arg) {
     ss_logger_set_cbk(&(ctx->logger), cbk, arg);
+}
+
+void ss_set_thread_cache_size(ss_ctx *ctx, int size) {
+    ss_thread_set_cache_size(&(ctx->threads), size);
 }
 
 static int set_fopts(int fd, int opt) {

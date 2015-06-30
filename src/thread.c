@@ -163,6 +163,25 @@ static ss_thread *thread_alloc(ss_ctx *ctx) {
     return th;
 }
 
+bool ss_thread_init(ss_threads *threads) {
+    threads->busy = NULL;
+    threads->free = NULL;
+    threads->cache_size = SS_DEFAULT_THREAD_CACHE_SIZE;
+    if (pthread_mutex_init(&(threads->mutex), NULL) != 0) {
+        goto err;
+    }
+    return true;
+
+err:
+    return false;
+}
+
+void ss_thread_set_cache_size(ss_threads *threads, int size) {
+    pthread_mutex_lock(&threads->mutex);
+    threads->cache_size = size;
+    pthread_mutex_unlock(&threads->mutex);
+}
+
 bool thread_run(ss_ctx *ctx, int sd) {
     ss_logger *logger = &ctx->logger;
     ss_thread *th = thread_alloc(ctx);
