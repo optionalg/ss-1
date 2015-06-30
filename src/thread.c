@@ -113,6 +113,8 @@ static void thread_exit(ss_thread *th) {
     pthread_mutex_unlock(&threads->mutex);
 
     pthread_detach(th->thread);
+    pthread_mutex_destroy(&(th->mutex));
+    pthread_cond_destroy(&(th->cond));
     free(th);
     pthread_exit(NULL);
 }
