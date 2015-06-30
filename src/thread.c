@@ -94,6 +94,7 @@ static void thread_free(ss_thread *th) {
 
 static void thread_exit(ss_thread *th) {
     ss_threads *threads = th->threads;
+    int result;
 
     pthread_mutex_lock(&threads->mutex);
 
@@ -112,9 +113,12 @@ static void thread_exit(ss_thread *th) {
 
     pthread_mutex_unlock(&threads->mutex);
 
-    pthread_detach(th->thread);
-    pthread_mutex_destroy(&(th->mutex));
-    pthread_cond_destroy(&(th->cond));
+    result = pthread_detach(th->thread);
+    assert(result == 0);
+    result = pthread_mutex_destroy(&(th->mutex));
+    assert(result == 0);
+    result = pthread_cond_destroy(&(th->cond));
+    assert(result == 0);
     free(th);
     pthread_exit(NULL);
 }
