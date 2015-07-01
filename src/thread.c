@@ -234,7 +234,7 @@ void ss_thread_set_cache_size(ss_threads *threads, int size) {
     pthread_mutex_unlock(&threads->mutex);
 }
 
-bool thread_run(ss_ctx *ctx, int sd) {
+bool ss_thread_run(ss_ctx *ctx, int sd) {
     ss_logger *logger = &ctx->logger;
     ss_thread *th = thread_alloc(ctx);
 
