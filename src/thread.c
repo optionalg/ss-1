@@ -90,6 +90,8 @@ static void thread_free(ss_thread *th) {
     threads->free_size++;
 
     pthread_mutex_unlock(&threads->mutex);
+
+    ss_debug(th->logger, "thread(%p) cached", th);
 }
 
 static void thread_exit(ss_thread *th) {
@@ -113,6 +115,7 @@ static void thread_exit(ss_thread *th) {
 
     pthread_mutex_unlock(&threads->mutex);
 
+    ss_debug(th->logger, "thread(%p) exit", th);
     result = pthread_detach(th->thread);
     assert(result == 0);
     result = pthread_mutex_destroy(&(th->mutex));
@@ -202,10 +205,11 @@ static ss_thread *thread_alloc(ss_ctx *ctx) {
         threads->free = th->next;
         threads->free_size--;
         th->next = NULL;
+        ss_debug(logger, "thread(%p) allocated from cache", th);
         assert(th->prev == NULL);
     } else {
         th = thread_spawn(ctx);
-        ss_debug(logger, "new thread spawned: th = %p\n", th);
+        ss_debug(logger, "thread(%p) spawned\n", th);
     }
 
     pthread_mutex_unlock(&threads->mutex);

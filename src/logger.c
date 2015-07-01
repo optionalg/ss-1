@@ -6,6 +6,9 @@
 #include <unistd.h>
 
 void ss_log(ss_logger *logger, int level, const char *format, ...) {
+    // MEMO logger->level 参照時に排他制御をかけていないので、
+    // log level 変更時に反映されないことがあるかもしれない。
+    // しかし、ここで毎回 mutex を取りに行きたくないので困るまではこのままにする。
     if (level <= logger->level) {
         va_list ap;
         pthread_mutex_lock(&(logger->mutex));
