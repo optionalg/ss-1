@@ -131,7 +131,7 @@ static bool is_thread_cache_full(ss_thread *th) {
     bool is_full;
 
     pthread_mutex_lock(&threads->mutex);
-    is_full = (threads->cache_size >= threads->free_size);
+    is_full = (threads->free_size >= threads->cache_size);
     pthread_mutex_unlock(&threads->mutex);
 
     return is_full;
