@@ -38,6 +38,10 @@ void ss_set_logger_cbk(ss_ctx *ctx, ss_logger_cbk cbk, void *arg) {
     ss_logger_set_cbk(&(ctx->logger), cbk, arg);
 }
 
+void ss_set_log_level(ss_ctx *ctx, int level) {
+    ss_logger_set_log_level(&(ctx->logger), level);
+}
+
 void ss_set_thread_cache_size(ss_ctx *ctx, int size) {
     ss_thread_set_cache_size(&(ctx->threads), size);
 }

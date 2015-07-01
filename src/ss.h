@@ -62,6 +62,7 @@ int ss_listen_uds(ss_ctx *ctx, const char *path);
 void ss_free(ss_ctx *ctx);
 bool ss_run(ss_ctx *ctx, int listen_fd);
 void ss_set_logger_cbk(ss_ctx *ctx, ss_logger_cbk cbk, void *arg);
+void ss_set_log_level(ss_ctx *ctx, int level);
 void ss_set_thread_cache_size(ss_ctx *ctx, int size);
 void ss_log(ss_logger *logger, int level, const char *format, ...);
 

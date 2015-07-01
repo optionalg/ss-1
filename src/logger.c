@@ -27,6 +27,12 @@ static void default_logger_cbk(void *arg, const char *format, va_list ap) {
     vdprintf((int)arg, format, ap);
 }
 
+void ss_logger_set_log_level(ss_logger *logger, int level) {
+    pthread_mutex_lock(&(logger->mutex));
+    logger->level = level;
+    pthread_mutex_unlock(&(logger->mutex));
+}
+
 bool ss_logger_init(ss_logger *logger) {
     logger->level = SS_DEFAULT_LOG_LEVEL;
     logger->cbk = default_logger_cbk;
